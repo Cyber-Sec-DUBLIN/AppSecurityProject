@@ -1,0 +1,32 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="SlopShop — Order">
+  <h1>Order details</h1>
+  <form id="f" class="form">
+    <label>Order ID</label>
+    <input id="id" value="1" />
+    <button type="submit">View order</button>
+  </form>
+  <div id="order"></div>
+  <p class="muted">VULN-04 (IDOR): change the id to view any customer's order —
+    there is no ownership check.</p>
+
+  <script is:inline>
+    async function load(id) {
+      const r = await fetch(window.API + '/api/orders/' + encodeURIComponent(id), { credentials: 'include' });
+      const o = await r.json();
+      document.getElementById('order').innerHTML = o.error
+        ? '<p class="notice">' + o.error + '</p>'
+        : `<table>
+            <tr><th>Order</th><td>#${o.id}</td></tr>
+            <tr><th>Belongs to user id</th><td>${o.user_id}</td></tr>
+            <tr><th>Items</th><td><code>${JSON.stringify(o.items)}</code></td></tr>
+            <tr><th>Total</th><td>€${Number(o.total).toFixed(2)}</td></tr>
+          </table>`;
+    }
+    document.getElementById('f').addEventListener('submit', (e) => { e.preventDefault(); load(document.getElementById('id').value); });
+    const initial = new URLSearchParams(location.search).get('id');
+    if (initial) { document.getElementById('id').value = initial; load(initial); }
+  </script>
+</Layout>

@@ -1,0 +1,25 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="SlopShop — Account">
+  <h1>My account</h1>
+  <div id="profile"></div>
+  <p class="muted">Tip: your user id is also your session token. Try viewing
+    <a href="/order?id=1">/order?id=1</a> or editing the <code>session</code> cookie.</p>
+
+  <script is:inline>
+    (async () => {
+      const r = await fetch(window.API + '/api/me', { credentials: 'include' });
+      if (!r.ok) { document.getElementById('profile').innerHTML = '<p class="notice">Not logged in. <a href="/login">Login</a>.</p>'; return; }
+      const u = await r.json();
+      // VULN-09 Information disclosure: the API returns the plaintext password.
+      document.getElementById('profile').innerHTML = `
+        <table>
+          <tr><th>ID</th><td>${u.id}</td></tr>
+          <tr><th>Username</th><td>${u.username}</td></tr>
+          <tr><th>Role</th><td>${u.role}</td></tr>
+          <tr><th>Password (plaintext!)</th><td>${u.password}</td></tr>
+        </table>`;
+    })();
+  </script>
+</Layout>

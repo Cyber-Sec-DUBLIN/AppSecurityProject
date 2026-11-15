@@ -1,0 +1,57 @@
+---
+const { title = 'SlopShop' } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script is:inline>window.API = 'http://localhost:8080';</script>
+  </head>
+  <body>
+    <header class="nav">
+      <a class="brand" href="/">🛒 SlopShop</a>
+      <nav>
+        <a href="/shop">Shop</a>
+        <a href="/search">Search</a>
+        <a href="/cart">Cart</a>
+        <a href="/account">Account</a>
+        <a id="admin-link" href="/admin" style="display:none">Admin</a>
+        <span id="who"></span>
+        <a id="login-link" href="/login">Login</a>
+        <a id="signup-link" href="/signup">Sign up</a>
+        <a href="#" id="logout" style="display:none">Logout</a>
+      </nav>
+    </header>
+    <main><slot /></main>
+    <footer class="foot">
+      v0 baseline — <strong>intentionally insecure</strong> training application for DFCS H4013.
+      Localhost + synthetic data only. Do not deploy.
+    </footer>
+    <script is:inline>
+      (async () => {
+        try {
+          const r = await fetch(window.API + '/api/me', { credentials: 'include' });
+          if (r.ok) {
+            const u = await r.json();
+            document.getElementById('who').textContent = ' ' + u.username + ' (' + u.role + ') ';
+            document.getElementById('logout').style.display = '';
+            document.getElementById('login-link').style.display = 'none';
+            document.getElementById('signup-link').style.display = 'none';
+            // NOTE: the Admin link is only *hidden* for non-admins. The API does
+            // not enforce the admin role, so /admin still works for anyone.
+            if (u.role === 'admin') document.getElementById('admin-link').style.display = '';
+          }
+        } catch (e) {}
+        const lo = document.getElementById('logout');
+        if (lo) lo.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await fetch(window.API + '/api/logout', { method: 'POST', credentials: 'include' });
+          location.href = '/';
+        });
+      })();
+    </script>
+  </body>
+</html>

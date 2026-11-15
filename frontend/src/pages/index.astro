@@ -1,0 +1,25 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="SlopShop — Home">
+  <h1>Welcome to SlopShop</h1>
+  <p class="muted">The finest synthetic goods, served with zero security hardening.</p>
+  <h2>Featured products</h2>
+  <div id="featured" class="grid"></div>
+
+  <script is:inline>
+    (async () => {
+      const r = await fetch(window.API + '/api/products', { credentials: 'include' });
+      const products = await r.json();
+      const el = document.getElementById('featured');
+      el.innerHTML = products.slice(0, 4).map((p) => `
+        <div class="card">
+          <h3>${p.name}</h3>
+          <!-- VULN-07 Stored XSS: description rendered as raw HTML -->
+          <div>${p.description}</div>
+          <p class="price">€${p.price.toFixed(2)}</p>
+          <a href="/product?id=${p.id}">Details</a>
+        </div>`).join('');
+    })();
+  </script>
+</Layout>

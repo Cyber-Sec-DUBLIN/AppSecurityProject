@@ -1,0 +1,33 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="SlopShop — Admin">
+  <h1>Admin — users</h1>
+  <p class="muted">This page is reachable by anyone who navigates here. The API
+    does not check the admin role (VULN-05), so a customer — or an
+    unauthenticated forged <code>session</code> cookie — can list and delete users.</p>
+  <div id="users"></div>
+
+  <script is:inline>
+    async function load() {
+      const r = await fetch(window.API + '/api/admin/users', { credentials: 'include' });
+      if (!r.ok) { document.getElementById('users').innerHTML = '<p class="notice">Login required.</p>'; return; }
+      const users = await r.json();
+      // VULN-09: plaintext passwords listed in the admin table.
+      document.getElementById('users').innerHTML =
+        '<table><tr><th>ID</th><th>Username</th><th>Password</th><th>Role</th><th>Address</th><th></th></tr>' +
+        users.map((u) => `<tr>
+          <td>${u.id}</td><td>${u.username}</td><td>${u.password}</td>
+          <td>${u.role}</td><td>${u.address || ''}</td>
+          <td><button class="danger" onclick="del(${u.id})">Delete</button></td>
+        </tr>`).join('') + '</table>';
+    }
+    async function del(id) {
+      // VULN-12: no CSRF token; VULN-05: no admin check server-side.
+      await fetch(window.API + '/api/admin/users/' + id, { method: 'DELETE', credentials: 'include' });
+      load();
+    }
+    window.del = del;
+    load();
+  </script>
+</Layout>

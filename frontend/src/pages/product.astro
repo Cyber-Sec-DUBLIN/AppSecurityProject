@@ -1,0 +1,20 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="SlopShop — Product">
+  <a href="/shop">&larr; Back to shop</a>
+  <div id="product"></div>
+
+  <script is:inline>
+    (async () => {
+      const id = new URLSearchParams(location.search).get('id');
+      const r = await fetch(window.API + '/api/products/' + encodeURIComponent(id), { credentials: 'include' });
+      const p = await r.json();
+      // VULN-07 Stored XSS: description rendered unescaped.
+      document.getElementById('product').innerHTML = `
+        <h1>${p.name || 'Unknown'}</h1>
+        <div>${p.description || ''}</div>
+        <p class="price">€${(p.price || 0).toFixed ? p.price.toFixed(2) : p.price}</p>`;
+    })();
+  </script>
+</Layout>

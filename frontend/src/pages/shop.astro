@@ -1,0 +1,30 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="SlopShop — Shop">
+  <h1>Shop</h1>
+  <div id="products" class="grid"></div>
+
+  <script is:inline>
+    function addToCart(id, name, price) {
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      cart.push({ id, name, price });
+      localStorage.setItem('cart', JSON.stringify(cart));
+      alert(name + ' added to cart');
+    }
+    window.addToCart = addToCart;
+    (async () => {
+      const r = await fetch(window.API + '/api/products', { credentials: 'include' });
+      const products = await r.json();
+      const el = document.getElementById('products');
+      // VULN-07 Stored XSS: product name + description injected as raw HTML.
+      el.innerHTML = products.map((p) => `
+        <div class="card">
+          <h3>${p.name}</h3>
+          <div>${p.description}</div>
+          <p class="price">€${p.price.toFixed(2)}</p>
+          <button onclick='addToCart(${p.id}, ${JSON.stringify(p.name)}, ${p.price})'>Add to cart</button>
+        </div>`).join('');
+    })();
+  </script>
+</Layout>

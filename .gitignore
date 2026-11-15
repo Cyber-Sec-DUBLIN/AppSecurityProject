@@ -1,0 +1,14 @@
+# Rust
+/backend/target/
+*.db
+*.db-journal
+
+# Node / Astro
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.astro/
+
+# Logs / local
+.cargo-build.log
+*.log
+.DS_Store

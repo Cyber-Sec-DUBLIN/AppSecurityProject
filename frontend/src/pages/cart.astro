@@ -1,0 +1,51 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="SlopShop — Cart">
+  <h1>Your cart</h1>
+  <div id="items"></div>
+  <h2>Checkout</h2>
+  <form id="checkout" class="form">
+    <label>Name on card</label>
+    <input id="card-name" value="Test Customer" />
+    <label>Card number</label>
+    <input id="card-number" value="4111 1111 1111 1111" />
+    <label>Expiry</label>
+    <input id="card-exp" value="12/29" />
+    <label>CVV</label>
+    <input id="card-cvv" value="123" />
+    <button type="submit">Place order</button>
+  </form>
+  <div id="result"></div>
+  <p class="notice">Checkout is simulated. Card fields are fake and are not stored or transmitted anywhere.</p>
+
+  <script is:inline>
+    function render() {
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      const total = cart.reduce((s, i) => s + Number(i.price), 0);
+      document.getElementById('items').innerHTML = cart.length
+        ? '<table><tr><th>Item</th><th>Price</th></tr>' +
+          cart.map((i) => `<tr><td>${i.name}</td><td>€${Number(i.price).toFixed(2)}</td></tr>`).join('') +
+          `<tr><td><strong>Total</strong></td><td><strong>€${total.toFixed(2)}</strong></td></tr></table>`
+        : '<p class="muted">Cart is empty.</p>';
+      return { cart, total };
+    }
+    render();
+    document.getElementById('checkout').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const { cart, total } = render();
+      const r = await fetch(window.API + '/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ items: cart, total }),
+      });
+      const o = await r.json();
+      localStorage.removeItem('cart');
+      render();
+      document.getElementById('result').innerHTML =
+        `<p class="notice">Order #${o.id} placed for €${Number(o.total).toFixed(2)}. ` +
+        `View it at <a href="/order?id=${o.id}">/order?id=${o.id}</a>.</p>`;
+    });
+  </script>
+</Layout>

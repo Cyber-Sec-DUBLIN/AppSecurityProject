@@ -1,0 +1,34 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+<Layout title="SlopShop — Search">
+  <h1>Search products</h1>
+  <form id="f" class="form">
+    <input id="q" name="q" placeholder="Search…" autocomplete="off" />
+    <button type="submit">Search</button>
+  </form>
+  <div id="heading"></div>
+  <div id="results" class="grid"></div>
+
+  <script is:inline>
+    async function run(q) {
+      const r = await fetch(window.API + '/api/search?q=' + encodeURIComponent(q), { credentials: 'include' });
+      const data = await r.json();
+      // VULN-08 Reflected XSS: the echoed query is written as raw HTML.
+      document.getElementById('heading').innerHTML = '<h2>Results for: ' + data.query + '</h2>';
+      // VULN-07 Stored XSS: each result description is raw HTML too.
+      document.getElementById('results').innerHTML = (data.results || []).map((p) => `
+        <div class="card">
+          <h3>${p.name}</h3>
+          <div>${p.description}</div>
+          <p class="price">€${Number(p.price).toFixed(2)}</p>
+        </div>`).join('') || '<p class="muted">No results.</p>';
+    }
+    document.getElementById('f').addEventListener('submit', (e) => {
+      e.preventDefault();
+      run(document.getElementById('q').value);
+    });
+    const initial = new URLSearchParams(location.search).get('q');
+    if (initial) { document.getElementById('q').value = initial; run(initial); }
+  </script>
+</Layout>
