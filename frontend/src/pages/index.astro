@@ -4,70 +4,86 @@ import Layout from '../layouts/Layout.astro';
 <Layout title="SlopSecurity — Antivirus, allegedly">
   <section class="hero">
     <div>
-      <span class="eyebrow">🛡 SlopSecurity 2026</span>
-      <h1>Antivirus that's <span>doing its best</span>.</h1>
-      <p>Real-time protection against malware, ransomware and phishing — from a
-        security suite that has never once been independently audited. Sleep
-        soundly behind a reassuringly large green checkmark.</p>
+      <span class="eyebrow">Meet SlopSecurity 2026</span>
+      <h1>Less worry.<br />More <span>whatever.</span></h1>
+      <p class="hero-copy">Digital protection for your devices, your data, and your
+        peace of mind. We can't promise perfect security. We can promise a very
+        reassuring green checkmark.</p>
       <div class="cta-row">
-        <a class="btn" href="/shop">Browse plans</a>
-        <a class="btn ghost" href="#features">See features</a>
+        <a class="btn" href="/shop">Find your plan <span aria-hidden="true">→</span></a>
+        <a class="btn ghost" href="#features">How it works</a>
+      </div>
+      <div class="hero-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6l-8-3Z"/><path d="m8 12 2.5 2.5L16 9"/></svg>
+        No credit card required. No actual protection either.
       </div>
     </div>
-    <div class="hero-art">
-      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2 20 5v6c0 5-3.4 8.5-8 11-4.6-2.5-8-6-8-11V5l8-3Z" fill="url(#hg)" stroke="rgba(255,255,255,.2)"/>
-        <path d="m8.2 12 2.6 2.6L16 9.2" stroke="#04120d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <defs><linearGradient id="hg" x1="4" y1="2" x2="20" y2="22"><stop stop-color="#1fe0a8"/><stop offset="1" stop-color="#5b8cff"/></linearGradient></defs>
-      </svg>
+    <div class="hero-art" aria-label="Illustration of the SlopSecurity dashboard">
+      <div class="security-console">
+        <div class="console-top"><span>SLOPSECURITY / OVERVIEW</span><span class="dots">•••</span></div>
+        <div class="console-main">
+          <div class="shield">
+            <svg viewBox="0 0 90 104" fill="none"><path d="M45 3 85 17v29c0 25-18 44-40 55C23 90 5 71 5 46V17L45 3Z" fill="#c5f277" fill-opacity=".09" stroke="#c5f277" stroke-width="1.5"/><path d="m27 49 12 12 24-28" stroke="#c5f277" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <h2>You're probably protected.</h2>
+          <p>Last checked just now. Looking good, mostly.</p>
+        </div>
+        <div class="scan-line"><span></span></div>
+        <div class="console-bottom"><span>Security score</span><strong>87% <span style="color:var(--primary)">↗</span></strong></div>
+        <div class="floating-card"><div class="check">✓</div><div><strong>Quick scan complete</strong><span>0 threats found. Suspiciously quiet.</span></div></div>
+      </div>
     </div>
   </section>
 
-  <section id="features" class="section">
-    <h2 class="center">Protection, broadly defined</h2>
-    <div class="features">
-      <div class="feature">
-        <div class="ico"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6l-8-3Z" stroke-linejoin="round"/></svg></div>
-        <h3>Real-time Shield</h3>
-        <p>Scans files as they open, whenever it remembers to.</p>
-      </div>
-      <div class="feature">
-        <div class="ico"><svg viewBox="0 0 24 24" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke-linecap="round"/></svg></div>
-        <h3>Ransomware Guard</h3>
-        <p>Negotiates with ransomware on your behalf, politely.</p>
-      </div>
-      <div class="feature">
-        <div class="ico"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></div>
-        <h3>Phishing Filter</h3>
-        <p>Flags suspicious emails, and a few important real ones.</p>
-      </div>
-      <div class="feature">
-        <div class="ico"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" stroke-linejoin="round"/></svg></div>
-        <h3>Turbo Boost</h3>
-        <p>Deletes files at random to make your PC feel faster.</p>
-      </div>
-    </div>
+  <section class="stats" aria-label="Product statistics">
+    <div class="stat"><strong>1.2 million</strong><span>reassuring checkmarks delivered</span></div>
+    <div class="stat"><strong>99.9%</strong><span>confidence in our own marketing</span></div>
+    <div class="stat"><strong>24 / 7</strong><span>automated emotional support</span></div>
+    <div class="stat"><strong>0</strong><span>independent security audits</span></div>
   </section>
 
   <section class="section">
-    <h2>Featured plans</h2>
-    <div id="featured" class="grid"></div>
+    <div class="section-heading">
+      <div><span class="eyebrow">Simple, suspiciously simple</span><h2>A plan for every comfort level.</h2></div>
+      <a class="text-link" href="/shop">Compare all plans</a>
+    </div>
+    <div id="featured" class="grid"><p class="muted">Loading plans…</p></div>
+  </section>
+
+  <section id="features" class="section">
+    <div class="section-heading"><div><span class="eyebrow">The SlopSecurity difference</span><h2>Security that feels like security.</h2></div></div>
+    <div class="features">
+      <div class="feature"><span class="feature-number">01 / ALWAYS ON</span><h3>Set it and forget it.</h3><p>Our real-time shield quietly runs in the background. You carry on. We'll handle the reassuring notifications.</p></div>
+      <div class="feature"><span class="feature-number">02 / LESS NOISE</span><h3>Fewer alerts. Better vibes.</h3><p>We filter out the digital noise so you can focus on what matters. Threats are no exception.</p></div>
+      <div class="feature"><span class="feature-number">03 / HUMAN-ISH</span><h3>Support that gets you.</h3><p>Meet Dave, our AI support specialist. Dave has read the entire internet and is confident about most of it.</p></div>
+    </div>
+  </section>
+
+  <section class="callout">
+    <div><h2>Your digital life.<br />A little less chaotic.</h2><p>Join thousands of fictional customers enjoying a questionable sense of security. Free plan available, no strings attached.</p></div>
+    <a class="btn" href="/signup">Get SlopSecurity free →</a>
   </section>
 
   <script is:inline>
     (async () => {
-      const r = await fetch(window.API + '/api/products', { credentials: 'include' });
-      const products = await r.json();
-      const el = document.getElementById('featured');
-      el.innerHTML = products.slice(0, 3).map((p) => `
-        <div class="card">
-          <h3>${p.name}</h3>
-          <div class="price">€${p.price.toFixed(2)} <small>/yr</small></div>
-          <!-- VULN-07 Stored XSS: description rendered as raw HTML -->
-          <div>${p.description}</div>
-          <div class="spacer"></div>
-          <a class="btn btn-full" href="/product?id=${p.id}">View plan</a>
-        </div>`).join('');
+      try {
+        const r = await fetch(window.API + '/api/products', { credentials: 'include' });
+        const products = await r.json();
+        const el = document.getElementById('featured');
+        // VULN-07 Stored XSS: untrusted product fields rendered as raw HTML.
+        el.innerHTML = products.slice(1, 4).map((p, i) => `
+          <div class="card ${i === 1 ? 'popular' : ''}">
+            ${i === 1 ? '<span class="badge">Most popular</span>' : ''}
+            <div class="card-top"><div class="plan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6l-8-3Z"/><path d="m8 12 2.5 2.5L16 9"/></svg></div><span class="pill">1 year</span></div>
+            <h3>${p.name}</h3>
+            <div class="price">€${Number(p.price).toFixed(2)} <small>/ year</small></div>
+            <div>${p.description}</div>
+            <div class="spacer"></div>
+            <a class="btn ${i === 1 ? '' : 'ghost'} btn-full" href="/product?id=${p.id}">Explore ${p.name.replace('SlopSecurity ', '')} →</a>
+          </div>`).join('');
+      } catch (e) {
+        document.getElementById('featured').innerHTML = '<p class="notice">Could not load plans. Is the backend running on port 8080?</p>';
+      }
     })();
   </script>
 </Layout>

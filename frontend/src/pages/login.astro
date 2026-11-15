@@ -1,29 +1,49 @@
 ---
 import Layout from '../layouts/Layout.astro';
 ---
-<Layout title="SlopShop — Login">
-  <h1>Login</h1>
-  <form id="f" class="form">
-    <label>Username</label>
-    <input id="u" autocomplete="off" />
-    <label>Password</label>
-    <input id="p" type="password" autocomplete="off" />
-    <button type="submit">Login</button>
-  </form>
-  <div id="msg"></div>
-  <p class="muted">Demo accounts: admin/admin123 · staff/staff123 · alice/password123</p>
-
+<Layout title="Welcome back — SlopSecurity">
+  <div class="auth-layout">
+    <section class="auth-intro">
+      <span class="eyebrow">Your security hub</span>
+      <h1>Good to see you again.</h1>
+      <p>Log in to check your protection, manage your subscription, and keep your digital life running smoothly.</p>
+      <div class="auth-aside">New to SlopSecurity? <a href="/signup">Create an account →</a><br /><br />Forgot your password? <a href="/reset">Reset it here →</a></div>
+    </section>
+    <section>
+      <form id="f" class="form" action="/api/login" method="post">
+        <div class="form-head"><h2>Log in</h2><span class="muted small">Welcome back to the safe side.</span></div>
+        <label for="u">Username</label>
+        <input id="u" autocomplete="username" required placeholder="Your username" />
+        <label for="p">Password</label>
+        <input id="p" type="password" autocomplete="current-password" required placeholder="Your password" />
+        <button type="submit" class="btn-full">Log in →</button>
+        <div id="msg" aria-live="polite"></div>
+        <p class="form-note">Demo accounts — click for instant access:</p>
+        <div class="demo-accounts">
+          <button type="button" data-u="admin" data-p="admin123">Admin</button>
+          <button type="button" data-u="staff" data-p="staff123">Staff</button>
+          <button type="button" data-u="alice" data-p="password123">Customer</button>
+        </div>
+      </form>
+    </section>
+  </div>
   <script is:inline>
+    document.querySelectorAll('[data-u]').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.getElementById('u').value = button.dataset.u;
+        document.getElementById('p').value = button.dataset.p;
+        document.getElementById('f').requestSubmit();
+      });
+    });
     document.getElementById('f').addEventListener('submit', async (e) => {
       e.preventDefault();
       const r = await fetch(window.API + '/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ username: document.getElementById('u').value, password: document.getElementById('p').value }),
       });
+      const data = await r.json();
       if (r.ok) { location.href = '/account'; }
-      else { document.getElementById('msg').innerHTML = '<p class="notice">Login failed.</p>'; }
+      else { document.getElementById('msg').innerHTML = '<p class="notice error">Login failed. ' + (data.error || 'Check your credentials.') + '</p>'; }
     });
   </script>
 </Layout>

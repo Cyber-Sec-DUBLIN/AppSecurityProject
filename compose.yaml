@@ -1,0 +1,29 @@
+# Local training only. Do not deploy this intentionally vulnerable app.
+name: slopsecurity
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - slopsecurity-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:4321:4321"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  slopsecurity-data:

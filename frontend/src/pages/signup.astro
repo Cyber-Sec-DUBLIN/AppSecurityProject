@@ -1,40 +1,36 @@
 ---
 import Layout from '../layouts/Layout.astro';
 ---
-<Layout title="SlopShop — Sign up">
-  <h1>Create an account</h1>
-  <form id="f" class="form">
-    <label>Username</label>
-    <input id="u" autocomplete="off" />
-    <label>Password</label>
-    <input id="p" type="password" autocomplete="off" />
-    <label>Account type</label>
-    <!-- VULN-06 Mass assignment: the role is chosen by the client and trusted
-         by the server, so anyone can self-register as an admin. -->
-    <select id="role">
-      <option value="customer">customer</option>
-      <option value="staff">staff</option>
-      <option value="admin">admin</option>
-    </select>
-    <button type="submit">Sign up</button>
-  </form>
-  <div id="msg"></div>
-
+<Layout title="Create your account — SlopSecurity">
+  <div class="auth-layout">
+    <section class="auth-intro">
+      <span class="eyebrow">Start feeling protected</span>
+      <h1>A safer digital life. Allegedly.</h1>
+      <p>Create your free account and discover the healing power of misplaced confidence.</p>
+      <div class="auth-aside">Already have an account? <a href="/login">Log in →</a><br /><br />Free forever. Upgrade whenever you're ready.</div>
+    </section>
+    <form id="f" class="form">
+      <div class="form-head"><h2>Create account</h2><span class="muted small">Free forever. Ready in minutes.</span></div>
+      <label for="u">Username</label>
+      <input id="u" autocomplete="username" required placeholder="Choose a username" />
+      <label for="p">Password</label>
+      <input id="p" type="password" autocomplete="new-password" required placeholder="Choose a password" />
+      <!-- VULN-06 Mass assignment: role is sent by the client and trusted. -->
+      <input id="role" type="hidden" value="customer" />
+      <button type="submit" class="btn-full">Create my account →</button>
+      <div id="msg" aria-live="polite"></div>
+    </form>
+  </div>
   <script is:inline>
     document.getElementById('f').addEventListener('submit', async (e) => {
       e.preventDefault();
       const r = await fetch(window.API + '/api/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          username: document.getElementById('u').value,
-          password: document.getElementById('p').value,
-          role: document.getElementById('role').value,
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ username: document.getElementById('u').value, password: document.getElementById('p').value, role: document.getElementById('role').value }),
       });
+      const data = await r.json();
       if (r.ok) { location.href = '/account'; }
-      else { document.getElementById('msg').innerHTML = '<p class="notice">Sign up failed (username may be taken).</p>'; }
+      else { document.getElementById('msg').innerHTML = '<p class="notice error">Sign up failed: ' + (data.error || 'username may be taken') + '</p>'; }
     });
   </script>
 </Layout>

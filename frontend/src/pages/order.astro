@@ -1,29 +1,14 @@
 ---
 import Layout from '../layouts/Layout.astro';
 ---
-<Layout title="SlopShop — Order">
-  <h1>Order details</h1>
-  <form id="f" class="form">
-    <label>Order ID</label>
-    <input id="id" value="1" />
-    <button type="submit">View order</button>
-  </form>
-  <div id="order"></div>
-  <p class="muted">VULN-04 (IDOR): change the id to view any customer's order —
-    there is no ownership check.</p>
-
+<Layout title="Order details — SlopSecurity">
+  <header class="page-header"><div><span class="eyebrow">Purchase history</span><h1>Order details.</h1><p>Every purchase, every questionable decision, neatly itemised.</p></div></header>
+  <div class="split"><form id="f" class="form"><div class="form-head"><h2>Find an order</h2><p class="muted small">Use the reference from your order confirmation email.</p></div><label for="id">Order ID</label><input id="id" type="number" value="1" /><button class="btn-full" type="submit">View order →</button></form><div id="order"><div class="empty">Enter an order ID to view its details.</div></div></div>
   <script is:inline>
     async function load(id) {
       const r = await fetch(window.API + '/api/orders/' + encodeURIComponent(id), { credentials: 'include' });
       const o = await r.json();
-      document.getElementById('order').innerHTML = o.error
-        ? '<p class="notice">' + o.error + '</p>'
-        : `<table>
-            <tr><th>Order</th><td>#${o.id}</td></tr>
-            <tr><th>Belongs to user id</th><td>${o.user_id}</td></tr>
-            <tr><th>Items</th><td><code>${JSON.stringify(o.items)}</code></td></tr>
-            <tr><th>Total</th><td>€${Number(o.total).toFixed(2)}</td></tr>
-          </table>`;
+      document.getElementById('order').innerHTML = o.error ? '<p class="notice error">' + o.error + '</p>' : `<div class="panel"><div class="panel-header"><h2>Order #${o.id}</h2><span class="pill green">Confirmed</span></div><p class="muted small">Belongs to user ID <strong>${o.user_id}</strong></p><div class="order-total">€${Number(o.total).toFixed(2)}</div><div class="divider"></div><p class="muted small">Purchased items</p><code>${JSON.stringify(o.items)}</code></div>`;
     }
     document.getElementById('f').addEventListener('submit', (e) => { e.preventDefault(); load(document.getElementById('id').value); });
     const initial = new URLSearchParams(location.search).get('id');

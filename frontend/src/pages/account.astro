@@ -1,25 +1,53 @@
 ---
 import Layout from '../layouts/Layout.astro';
 ---
-<Layout title="SlopShop — Account">
-  <h1>My account</h1>
-  <div id="profile"></div>
-  <p class="muted">Tip: your user id is also your session token. Try viewing
-    <a href="/order?id=1">/order?id=1</a> or editing the <code>session</code> cookie.</p>
-
+<Layout title="Your account — SlopSecurity">
+  <header class="page-header"><div><span class="eyebrow">Your security hub</span><h1>Account overview.</h1><p>Manage your profile, subscription, and recent orders in one place.</p></div><span class="pill green">● All systems protected</span></header>
+  <div id="profile"><p class="muted">Loading your account…</p></div>
   <script is:inline>
+    async function loadProfile(id) {
+      const r = await fetch(window.API + '/api/users/' + id, { credentials: 'include' });
+      const u = await r.json();
+      if (!r.ok) { document.getElementById('profile').innerHTML = '<p class="notice error">Profile not found.</p>'; return; }
+      // VULN-09: plaintext passwords are displayed; VULN-07: profile is raw HTML.
+      document.getElementById('profile').innerHTML = `
+        <div class="split">
+          <div class="stack">
+            <section class="panel"><div class="panel-header"><h2>Profile details</h2><span class="role">${u.role}</span></div><div class="table-wrap"><table><tbody>
+              <tr><th>Account ID</th><td class="mono">${u.id}</td></tr><tr><th>Username</th><td>${u.username}</td></tr><tr><th>Password</th><td><input id="saved-password" type="password" value="${u.password}" readonly style="width:180px;display:inline-block;padding:.35rem" /> <button type="button" class="ghost btn-small" id="show-password" style="margin:0">Show</button></td></tr><tr><th>Address</th><td>${u.address || 'Not provided'}</td></tr>
+            </tbody></table></div></section>
+            <section class="panel"><h2>Update profile</h2><p class="muted small">Keep your account details and preferences up to date.</p><form id="update"><input id="uid" type="hidden" value="${u.id}" /><label for="address">Billing address</label><input id="address" value="${u.address || ''}" /><input id="role-update" type="hidden" value="${u.role}" /><button class="btn-full" type="submit">Save changes</button></form><div id="update-msg"></div></section>
+          </div>
+          <div class="stack">
+            <section class="panel"><h2>Find a receipt</h2><p class="muted small">Retrieve a previous purchase using the reference from your confirmation email.</p><form id="lookup"><label for="order-id">Order reference</label><input id="order-id" type="number" value="1" /><button type="submit" class="ghost btn-full">Find receipt</button></form><div id="lookup-result"></div></section>
+            <section class="panel"><h2>Protection summary</h2><div class="summary-row"><span>Real-time shield</span><span class="role">Active</span></div><div class="summary-row"><span>Last full scan</span><span>Today, 09:42</span></div><div class="summary-row"><span>Devices protected</span><span>1 of 3</span></div><div class="divider"></div><p class="muted small">Your devices are up to date and protected.</p></section>
+          </div>
+        </div>`;
+      document.getElementById('role-update').value = u.role;
+      document.getElementById('show-password').addEventListener('click', () => {
+        const input = document.getElementById('saved-password');
+        input.type = input.type === 'password' ? 'text' : 'password';
+        document.getElementById('show-password').textContent = input.type === 'password' ? 'Show' : 'Hide';
+      });
+      document.getElementById('update').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const uid = document.getElementById('uid').value;
+        const r = await fetch(window.API + '/api/users/' + uid, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ address: document.getElementById('address').value, role: document.getElementById('role-update').value }) });
+        const data = await r.json();
+        document.getElementById('update-msg').innerHTML = `<p class="notice ${r.ok ? 'success' : 'error'}">${r.ok ? 'Profile updated.' : data.error}</p>`;
+      });
+      document.getElementById('lookup').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const oid = document.getElementById('order-id').value;
+        const r = await fetch(window.API + '/api/orders/' + oid, { credentials: 'include' });
+        const o = await r.json();
+        document.getElementById('lookup-result').innerHTML = o.error ? `<p class="notice error">${o.error}</p>` : `<p class="notice success">Order #${o.id} · User ${o.user_id} · €${Number(o.total).toFixed(2)}<br /><a href="/order?id=${o.id}">View full order →</a></p>`;
+      });
+    }
     (async () => {
       const r = await fetch(window.API + '/api/me', { credentials: 'include' });
-      if (!r.ok) { document.getElementById('profile').innerHTML = '<p class="notice">Not logged in. <a href="/login">Login</a>.</p>'; return; }
-      const u = await r.json();
-      // VULN-09 Information disclosure: the API returns the plaintext password.
-      document.getElementById('profile').innerHTML = `
-        <table>
-          <tr><th>ID</th><td>${u.id}</td></tr>
-          <tr><th>Username</th><td>${u.username}</td></tr>
-          <tr><th>Role</th><td>${u.role}</td></tr>
-          <tr><th>Password (plaintext!)</th><td>${u.password}</td></tr>
-        </table>`;
+      if (!r.ok) { document.getElementById('profile').innerHTML = '<div class="empty">You’re not logged in.<br /><a class="btn" href="/login">Log in to your account →</a></div>'; return; }
+      const u = await r.json(); loadProfile(u.id);
     })();
   </script>
 </Layout>

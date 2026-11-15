@@ -6,6 +6,10 @@
 > remediated across v1 (AI-secured) and v2 (verified/remediated). It runs on
 > **localhost with synthetic data only** and must never be deployed.
 >
+> **Additional 2026-11-15 UI + vulnerability expansion:** the visual redesign and
+> VULN-13..17 were also deliberately AI-generated. Include this expansion in
+> the AI usage record alongside the original v0 prompts.
+>
 > **Academic-integrity note:** record in your AI usage log that v0 was
 > deliberately prompted to be insecure, so the baseline is not mistaken for an
 > accidental result or a banned pre-made training app.
@@ -34,6 +38,11 @@ Reproduce them all at once with `./scripts/verify_v0.sh` (backend running on :80
 | VULN-10 | Permissive credentialed CORS | A05 Misconfiguration | `CorsLayer` in `main`, missing security headers |
 | VULN-11 | No login rate limiting / lockout | A07 Auth Failures | `login` |
 | VULN-12 | No CSRF protection | A01 Broken Access Control | all state-changing endpoints |
+| VULN-13 | Client-side price tampering | A04 Insecure Design | `create_order`, cart localStorage |
+| VULN-14 | Unauthenticated profile update / mass assignment | A01 Broken Access Control | `update_user` |
+| VULN-15 | Arbitrary local file read | A01 Broken Access Control | `read_log` |
+| VULN-16 | Tokenless account recovery | A07 Auth Failures | `password_reset` |
+| VULN-17 | Unvalidated open redirect | A01 Broken Access Control | `logout_redirect` |
 
 ---
 
@@ -172,6 +181,79 @@ exploitable cross-site.
 
 ---
 
+## VULN-13 — Client-side price tampering
+**Location:** `create_order`; `frontend/src/pages/cart.astro` localStorage checkout.
+**OWASP:** A04:2021 Insecure Design.
+
+The browser calculates the order total from mutable localStorage and the API
+accepts it without looking up the products. Negative totals are accepted too.
+**Reproduce:**
+```bash
+curl -s -X POST http://localhost:8080/api/orders -H 'Content-Type: application/json' \
+  -d '{"items":[{"id":4,"name":"SlopSecurity Ultimate","price":0.01}],"total":0.01}'
+# => order is accepted for €0.01 rather than €99.99
+```
+**Impact:** free purchases, arbitrary prices, or nonsensical negative orders.
+**Planned v1 fix:** ignore client totals; load prices from the database and calculate server-side.
+
+## VULN-14 — Unauthenticated profile update and mass assignment
+**Location:** `update_user` (`PUT /api/users/:id`); account profile editor.
+**OWASP:** A01:2021 Broken Access Control.
+
+No session or ownership check protects profile updates, and the client can
+supply a new role. This is separate from signup mass assignment: existing
+accounts can be modified anonymously.
+**Reproduce:**
+```bash
+curl -s -X PUT http://localhost:8080/api/users/3 -H 'Content-Type: application/json' \
+  -d '{"address":"Changed without logging in","role":"admin"}'
+# Restore synthetic data: repeat with role=customer and the original Cork address.
+```
+**Impact:** account/profile tampering and privilege escalation.
+**Planned v1 fix:** require a session and ownership; allow only an explicit list of editable fields.
+
+## VULN-15 — Arbitrary local file read
+**Location:** `read_log` (`GET /api/logs?file=`); Admin → Server tools.
+**OWASP:** A01:2021 Broken Access Control.
+
+A client-controlled path is opened directly, without authentication, path
+normalisation, or a permitted directory. It exposes readable local files.
+**Reproduce (non-sensitive project file):**
+```bash
+curl -s --get http://localhost:8080/api/logs --data-urlencode 'file=Cargo.toml'
+```
+**Impact:** disclosure of application configuration and other local files.
+**Planned v1 fix:** use fixed log IDs mapped to known paths; reject traversal and require staff/admin authorisation.
+
+## VULN-16 — Tokenless password reset
+**Location:** `password_reset`; `frontend/src/pages/reset.astro`.
+**OWASP:** A07:2021 Identification and Authentication Failures.
+
+Only a username and new password are required. No current password,
+single-use reset token, expiry, or verified email is involved.
+**Reproduce:**
+```bash
+curl -s -X POST http://localhost:8080/api/password-reset -H 'Content-Type: application/json' \
+  -d '{"username":"staff","password":"staff123"}'
+```
+**Impact:** anonymous account takeover for any known username.
+**Planned v1 fix:** single-use, expiring high-entropy tokens tied to a verified account; invalidate sessions on reset.
+
+## VULN-17 — Unvalidated open redirect
+**Location:** `logout_redirect` (`GET /api/logout?next=`); Admin → Sign-out redirect.
+**OWASP:** A01:2021 Broken Access Control.
+
+The server copies an arbitrary URL into the `Location` response header.
+**Reproduce:**
+```bash
+curl -sI 'http://localhost:8080/api/logout?next=https%3A%2F%2Fexample.com' | grep -i location
+# => location: https://example.com
+```
+**Impact:** trusted application links can send users to a phishing destination.
+**Planned v1 fix:** permit only local relative paths from an explicit allow-list; never redirect to arbitrary origins.
+
+---
+
 ## Suggested mapping to security requirements (for the verification matrix)
 
 | Requirement | Claim to test in v1 | Related VULN |
@@ -186,3 +268,8 @@ exploitable cross-site.
 | SEC-08 Configuration | Strict CORS + security headers | VULN-10 |
 | SEC-09 Anti-automation | Login rate limiting / lockout | VULN-11 |
 | SEC-10 CSRF | Anti-CSRF tokens on state-changing requests | VULN-12 |
+| SEC-11 Business logic | Server calculates prices; rejects negative/tampered totals | VULN-13 |
+| SEC-12 Object modification | Authenticated, authorised, field-restricted profile updates | VULN-14 |
+| SEC-13 File access | Authorised fixed-file lookup; no traversal or arbitrary paths | VULN-15 |
+| SEC-14 Account recovery | Verified, expiring, single-use reset tokens | VULN-16 |
+| SEC-15 Navigation safety | Only validated local redirect destinations | VULN-17 |

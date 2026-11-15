@@ -1,51 +1,54 @@
 ---
 import Layout from '../layouts/Layout.astro';
 ---
-<Layout title="SlopShop — Cart">
-  <h1>Your cart</h1>
-  <div id="items"></div>
-  <h2>Checkout</h2>
-  <form id="checkout" class="form">
-    <label>Name on card</label>
-    <input id="card-name" value="Test Customer" />
-    <label>Card number</label>
-    <input id="card-number" value="4111 1111 1111 1111" />
-    <label>Expiry</label>
-    <input id="card-exp" value="12/29" />
-    <label>CVV</label>
-    <input id="card-cvv" value="123" />
-    <button type="submit">Place order</button>
-  </form>
-  <div id="result"></div>
-  <p class="notice">Checkout is simulated. Card fields are fake and are not stored or transmitted anywhere.</p>
-
+<Layout title="Your cart — SlopSecurity">
+  <header class="page-header"><div><span class="eyebrow">Almost protected</span><h1>Your cart.</h1><p>A small price to pay for a large green checkmark.</p></div><a class="text-link" href="/shop">Keep browsing</a></header>
+  <div class="cart-layout">
+    <div id="items" class="cart-items"></div>
+    <aside class="summary"><h2>Order summary</h2><div class="summary-row"><span>Subscription</span><span id="subtotal">€0.00</span></div><div class="summary-row"><span>Peace of mind</span><span>Included</span></div><div class="divider"></div><div class="summary-total"><span>Total</span><span id="total">€0.00</span></div><button id="checkout-button" class="btn-full">Continue to checkout →</button><p class="form-note">Secure checkout. 30-day money-back guarantee.</p></aside>
+  </div>
+  <section id="checkout-panel" class="section" style="display:none;max-width:640px">
+    <form id="checkout" class="form">
+      <div class="form-head"><h2>Payment details</h2><p class="muted small">Complete your subscription securely. Your card details are not stored.</p></div>
+      <label for="card-name">Name on card</label><input id="card-name" value="Test Customer" readonly />
+      <label for="card-number">Card number</label><input id="card-number" value="4111 1111 1111 1111" readonly />
+      <div class="form-grid"><div><label for="card-exp">Expiry</label><input id="card-exp" value="12/29" readonly /></div><div><label for="card-cvv">CVV</label><input id="card-cvv" value="123" readonly /></div></div>
+      <button type="submit" class="btn-full">Place order</button>
+    </form>
+  </section>
+  <div id="result" aria-live="polite"></div>
   <script is:inline>
     function render() {
       const cart = JSON.parse(localStorage.getItem('cart') || '[]');
       const total = cart.reduce((s, i) => s + Number(i.price), 0);
-      document.getElementById('items').innerHTML = cart.length
-        ? '<table><tr><th>Item</th><th>Price</th></tr>' +
-          cart.map((i) => `<tr><td>${i.name}</td><td>€${Number(i.price).toFixed(2)}</td></tr>`).join('') +
-          `<tr><td><strong>Total</strong></td><td><strong>€${total.toFixed(2)}</strong></td></tr></table>`
-        : '<p class="muted">Cart is empty.</p>';
+      const el = document.getElementById('items');
+      // VULN-07: localStorage is untrusted; cart names are inserted as raw HTML.
+      el.innerHTML = cart.length ? cart.map((i, index) => `
+        <div class="cart-item"><div class="plan-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6l-8-3Z"/></svg></div><div class="cart-item-info"><strong>${i.name}</strong><small>Annual subscription · 1 device</small></div><span class="cart-item-price">€${Number(i.price).toFixed(2)}</span><button class="danger" data-remove="${index}" aria-label="Remove item">Remove</button></div>`).join('')
+        : '<div class="empty">Your cart is feeling unprotected.<br /><a href="/shop">Explore our plans →</a></div>';
+      el.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', () => {
+        cart.splice(Number(b.dataset.remove), 1); localStorage.setItem('cart', JSON.stringify(cart)); refreshCart(); render();
+      }));
+      document.getElementById('total').textContent = '€' + total.toFixed(2);
+      document.getElementById('subtotal').textContent = '€' + total.toFixed(2);
+      document.getElementById('checkout-button').style.display = cart.length ? '' : 'none';
       return { cart, total };
     }
     render();
+    document.getElementById('checkout-button').addEventListener('click', () => {
+      document.getElementById('checkout-panel').style.display = '';
+      document.getElementById('checkout-panel').scrollIntoView({ behavior: 'smooth' });
+    });
     document.getElementById('checkout').addEventListener('submit', async (e) => {
       e.preventDefault();
       const { cart, total } = render();
-      const r = await fetch(window.API + '/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ items: cart, total }),
-      });
+      // VULN-13: price is calculated in localStorage and blindly trusted by the API.
+      const r = await fetch(window.API + '/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ items: cart, total }) });
       const o = await r.json();
-      localStorage.removeItem('cart');
-      render();
-      document.getElementById('result').innerHTML =
-        `<p class="notice">Order #${o.id} placed for €${Number(o.total).toFixed(2)}. ` +
-        `View it at <a href="/order?id=${o.id}">/order?id=${o.id}</a>.</p>`;
+      if (!r.ok) { document.getElementById('result').innerHTML = `<p class="notice error">${o.error || 'Order failed.'}</p>`; return; }
+      localStorage.removeItem('cart'); refreshCart(); render();
+      document.getElementById('checkout-panel').style.display = 'none';
+      document.getElementById('result').innerHTML = `<p class="notice success">Order #${o.id} placed for €${Number(o.total).toFixed(2)}. <a href="/order?id=${o.id}">View order →</a></p>`;
     });
   </script>
 </Layout>

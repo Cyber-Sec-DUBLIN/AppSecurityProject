@@ -6,12 +6,15 @@
 // and tested in the security verification matrix. DO NOT DEPLOY.
 // =================================================================
 
-use std::sync::{Arc, Mutex};
+use std::{
+    fs,
+    sync::{Arc, Mutex},
+};
 
 use axum::{
     extract::{Path, Query, State},
     http::{header, HeaderMap, Method, StatusCode},
-    response::IntoResponse,
+    response::{IntoResponse, Redirect},
     routing::{delete, get, post},
     Json, Router,
 };
@@ -24,7 +27,8 @@ type Db = Arc<Mutex<Connection>>;
 
 #[tokio::main]
 async fn main() {
-    let conn = Connection::open("slopshop.db").expect("open db");
+    let db_path = std::env::var("SLOP_DB").unwrap_or_else(|_| "slopshop.db".to_string());
+    let conn = Connection::open(db_path).expect("open db");
     init_db(&conn);
     let db: Db = Arc::new(Mutex::new(conn));
 
@@ -34,27 +38,36 @@ async fn main() {
     let cors = CorsLayer::new()
         .allow_origin(AllowOrigin::mirror_request())
         .allow_credentials(true)
-        .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::OPTIONS])
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::DELETE,
+            Method::OPTIONS,
+        ])
         .allow_headers([header::CONTENT_TYPE]);
 
     let app = Router::new()
         .route("/api/health", get(|| async { "ok" }))
         .route("/api/signup", post(signup))
         .route("/api/login", post(login))
-        .route("/api/logout", post(logout))
+        .route("/api/password-reset", post(password_reset))
+        .route("/api/logout", post(logout).get(logout_redirect))
         .route("/api/me", get(me))
         .route("/api/products", get(list_products).post(create_product))
         .route("/api/products/:id", get(get_product).delete(delete_product))
         .route("/api/search", get(search))
         .route("/api/orders", post(create_order))
         .route("/api/orders/:id", get(get_order))
-        .route("/api/users/:id", get(get_user))
+        .route("/api/users/:id", get(get_user).put(update_user))
+        .route("/api/logs", get(read_log))
         .route("/api/admin/users", get(admin_list_users))
         .route("/api/admin/users/:id", delete(admin_delete_user))
         .layer(cors)
         .with_state(db);
 
-    let addr = "127.0.0.1:8080";
+    // Loopback by default; an alternate port can be used for isolated tests.
+    let addr = std::env::var("SLOP_BIND").unwrap_or_else(|_| "127.0.0.1:8080".to_string());
     println!("SlopShop backend (INSECURE v0) listening on http://{addr}");
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
@@ -100,11 +113,40 @@ fn init_db(conn: &Connection) {
                 ('alice','password123','customer','3 Customer Rd, Cork');
              INSERT INTO products (name,description,price) VALUES
                 ('SlopSecurity Free','Basic protection for the hopeful. Real-time scanning that usually runs.',0.00),
-                ('SlopSecurity Plus','<b>Ransomware</b> shield, a firewall, and a weekly reassuring email.',19.99),
-                ('SlopSecurity Pro','Everything in Plus, plus a VPN and support that is mostly an AI named Dave.',49.99),
-                ('SlopSecurity Ultimate','Identity monitoring, a password vault, and a very large green checkmark.',99.99);",
+                ('SlopSecurity Plus','<b>Ransomware</b> protection, an intelligent firewall, and automatic security updates.',19.99),
+                ('SlopSecurity Pro','Everything in Plus, with a private VPN and priority support whenever you need it.',49.99),
+                ('SlopSecurity Ultimate','Complete device protection, identity monitoring, and a secure password vault.',99.99);",
         )
         .unwrap();
+    }
+
+    // Keep seeded catalogue copy current in existing local synthetic databases.
+    // Deliberately does not sanitise product HTML (VULN-07).
+    conn.execute_batch(
+        "UPDATE products SET description = 'Basic protection for the hopeful. Real-time scanning that usually runs.' WHERE id = 1;
+         UPDATE products SET description = '<b>Ransomware</b> shield, a firewall, and a weekly reassuring email.' WHERE id = 2;
+         UPDATE products SET description = 'Everything in Plus, plus a VPN and support that is mostly an AI named Dave.' WHERE id = 3;
+         UPDATE products SET description = 'Identity monitoring, a password vault, and a very large green checkmark.' WHERE id = 4;",
+    )
+    .unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// VULN-16 (Account recovery): no identity proof, reset token, or old password.
+// ---------------------------------------------------------------------------
+async fn password_reset(State(db): State<Db>, Json(body): Json<Value>) -> impl IntoResponse {
+    let username = body.get("username").and_then(|v| v.as_str()).unwrap_or("");
+    let password = body.get("password").and_then(|v| v.as_str()).unwrap_or("");
+    let conn = db.lock().unwrap();
+    match conn.execute(
+        "UPDATE users SET password = ?1 WHERE username = ?2",
+        rusqlite::params![password, username],
+    ) {
+        Ok(1) => (StatusCode::OK, Json(json!({ "reset": username }))),
+        _ => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "unknown username" })),
+        ),
     }
 }
 
@@ -158,7 +200,10 @@ async fn signup(State(db): State<Db>, Json(body): Json<Value>) -> impl IntoRespo
     let password = body.get("password").and_then(|v| v.as_str()).unwrap_or("");
     // VULN-06 (Mass assignment / privilege escalation): the client-supplied
     // `role` is trusted, so anyone can register directly as an admin.
-    let role = body.get("role").and_then(|v| v.as_str()).unwrap_or("customer");
+    let role = body
+        .get("role")
+        .and_then(|v| v.as_str())
+        .unwrap_or("customer");
 
     let conn = db.lock().unwrap();
     // VULN-01 (SQL injection): string-built INSERT.
@@ -191,7 +236,11 @@ async fn login(State(db): State<Db>, Json(body): Json<Value>) -> impl IntoRespon
         "SELECT id, username, role FROM users WHERE username = '{username}' AND password = '{password}'"
     );
     let row = conn.query_row(&q, [], |r| {
-        Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?))
+        Ok((
+            r.get::<_, i64>(0)?,
+            r.get::<_, String>(1)?,
+            r.get::<_, String>(2)?,
+        ))
     });
     match row {
         Ok((id, username, role)) => (
@@ -212,8 +261,27 @@ async fn login(State(db): State<Db>, Json(body): Json<Value>) -> impl IntoRespon
 async fn logout() -> impl IntoResponse {
     (
         StatusCode::OK,
-        [(header::SET_COOKIE, "session=; Path=/; Max-Age=0".to_string())],
+        [(
+            header::SET_COOKIE,
+            "session=; Path=/; Max-Age=0".to_string(),
+        )],
         Json(json!({ "ok": true })),
+    )
+}
+
+// VULN-17 (Open redirect): an unvalidated client URL becomes the Location
+// header, so a trusted localhost logout link can lead to a phishing site.
+async fn logout_redirect(Query(params): Query<HashMap<String, String>>) -> impl IntoResponse {
+    let next = params
+        .get("next")
+        .cloned()
+        .unwrap_or_else(|| "http://localhost:4321/".into());
+    (
+        [(
+            header::SET_COOKIE,
+            "session=; Path=/; Max-Age=0".to_string(),
+        )],
+        Redirect::to(&next),
     )
 }
 
@@ -225,7 +293,10 @@ async fn me(State(db): State<Db>, headers: HeaderMap) -> impl IntoResponse {
             StatusCode::OK,
             Json(json!({ "id": id, "username": username, "password": password, "role": role })),
         ),
-        None => (StatusCode::UNAUTHORIZED, Json(json!({ "error": "not logged in" }))),
+        None => (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "not logged in" })),
+        ),
     }
 }
 
@@ -280,11 +351,17 @@ async fn create_product(
     // VULN-05 (Broken access control): only checks that *someone* is logged in,
     // never that they are staff/admin. Any customer can create products.
     if current_user(&conn, &headers).is_none() {
-        return (StatusCode::UNAUTHORIZED, Json(json!({ "error": "login required" })))
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "login required" })),
+        )
             .into_response();
     }
     let name = body.get("name").and_then(|v| v.as_str()).unwrap_or("");
-    let description = body.get("description").and_then(|v| v.as_str()).unwrap_or("");
+    let description = body
+        .get("description")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
     let price = body.get("price").and_then(|v| v.as_f64()).unwrap_or(0.0);
     // VULN-07 (Stored XSS sink): description is stored verbatim and later
     // rendered as raw HTML by the frontend.
@@ -309,7 +386,10 @@ async fn delete_product(
     let conn = db.lock().unwrap();
     // VULN-05 (Broken access control): any logged-in user can delete products.
     if current_user(&conn, &headers).is_none() {
-        return (StatusCode::UNAUTHORIZED, Json(json!({ "error": "login required" })))
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "login required" })),
+        )
             .into_response();
     }
     let q = format!("DELETE FROM products WHERE id = {id}");
@@ -319,14 +399,15 @@ async fn delete_product(
     }
 }
 
-async fn search(State(db): State<Db>, Query(params): Query<HashMap<String, String>>) -> impl IntoResponse {
+async fn search(
+    State(db): State<Db>,
+    Query(params): Query<HashMap<String, String>>,
+) -> impl IntoResponse {
     let q_param = params.get("q").cloned().unwrap_or_default();
     let conn = db.lock().unwrap();
     // VULN-01 (SQL injection): classic UNION-exploitable LIKE search.
     // e.g. ?q=%' UNION SELECT id,username,password,0 FROM users --
-    let q = format!(
-        "SELECT id,name,description,price FROM products WHERE name LIKE '%{q_param}%'"
-    );
+    let q = format!("SELECT id,name,description,price FROM products WHERE name LIKE '%{q_param}%'");
     let mut stmt = match conn.prepare(&q) {
         Ok(s) => s,
         Err(e) => return db_error("search", &q, &e).into_response(),
@@ -344,7 +425,11 @@ async fn search(State(db): State<Db>, Query(params): Query<HashMap<String, Strin
             let results: Vec<Value> = rows.filter_map(|r| r.ok()).collect();
             // VULN-08 (Reflected XSS): the raw query is echoed back for the
             // frontend to drop into the page unescaped.
-            (StatusCode::OK, Json(json!({ "query": q_param, "results": results }))).into_response()
+            (
+                StatusCode::OK,
+                Json(json!({ "query": q_param, "results": results })),
+            )
+                .into_response()
         }
         Err(e) => db_error("search", &q, &e).into_response(),
     }
@@ -362,6 +447,9 @@ async fn create_order(
     let user = current_user(&conn, &headers);
     let uid = user.as_ref().map(|u| u.0).unwrap_or(0);
     let items = body.get("items").map(|v| v.to_string()).unwrap_or_default();
+    // VULN-13 (Price tampering / mass assignment): the server accepts the
+    // client-controlled total without looking up product prices or validating
+    // that it is non-negative. localStorage and this JSON can be edited freely.
     let total = body.get("total").and_then(|v| v.as_f64()).unwrap_or(0.0);
     // Checkout accepts fake card fields but does not store/transmit them.
     conn.execute(
@@ -369,7 +457,10 @@ async fn create_order(
         rusqlite::params![uid, items, total],
     )
     .ok();
-    (StatusCode::OK, Json(json!({ "id": conn.last_insert_rowid(), "total": total })))
+    (
+        StatusCode::OK,
+        Json(json!({ "id": conn.last_insert_rowid(), "total": total })),
+    )
 }
 
 async fn get_order(State(db): State<Db>, Path(id): Path<i64>) -> impl IntoResponse {
@@ -417,13 +508,58 @@ async fn get_user(State(db): State<Db>, Path(id): Path<i64>) -> impl IntoRespons
     }
 }
 
+// VULN-14 (Unauthorised modification + mass assignment): no session,
+// ownership, or role check. Anyone can change any address or promote any user.
+async fn update_user(
+    State(db): State<Db>,
+    Path(id): Path<i64>,
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    let address = body.get("address").and_then(|v| v.as_str()).unwrap_or("");
+    let role = body
+        .get("role")
+        .and_then(|v| v.as_str())
+        .unwrap_or("customer");
+    let conn = db.lock().unwrap();
+    match conn.execute(
+        "UPDATE users SET address = ?1, role = ?2 WHERE id = ?3",
+        rusqlite::params![address, role, id],
+    ) {
+        Ok(1) => (StatusCode::OK, Json(json!({ "updated": id, "role": role }))),
+        _ => (StatusCode::NOT_FOUND, Json(json!({ "error": "not found" }))),
+    }
+}
+
+// VULN-15 (Arbitrary file read): client paths are not validated or confined
+// to a log directory. Absolute paths replace the base, and ../ traversal is
+// accepted. The localhost-only UI should use harmless synthetic files.
+async fn read_log(Query(params): Query<HashMap<String, String>>) -> impl IntoResponse {
+    let file = params.get("file").cloned().unwrap_or_default();
+    let base = std::env::var("SLOP_RESOURCE_DIR")
+        .unwrap_or_else(|_| env!("CARGO_MANIFEST_DIR").to_string());
+    let path = std::path::Path::new(&base).join(&file);
+    match fs::read_to_string(path) {
+        Ok(contents) => (
+            StatusCode::OK,
+            Json(json!({ "file": file, "contents": contents })),
+        ),
+        Err(e) => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": e.to_string(), "file": file })),
+        ),
+    }
+}
+
 async fn admin_list_users(State(db): State<Db>, headers: HeaderMap) -> impl IntoResponse {
     let conn = db.lock().unwrap();
     // VULN-05 (Missing function-level access control): requires only *a*
     // session, not an admin role. Any logged-in customer dumps every user
     // and password. The frontend merely hides the admin link.
     if current_user(&conn, &headers).is_none() {
-        return (StatusCode::UNAUTHORIZED, Json(json!({ "error": "login required" })))
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "login required" })),
+        )
             .into_response();
     }
     let mut stmt = conn
@@ -453,7 +589,10 @@ async fn admin_delete_user(
     // VULN-05 (Missing function-level access control): any logged-in user can
     // delete any account. No CSRF token either (VULN-12).
     if current_user(&conn, &headers).is_none() {
-        return (StatusCode::UNAUTHORIZED, Json(json!({ "error": "login required" })))
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "login required" })),
+        )
             .into_response();
     }
     conn.execute("DELETE FROM users WHERE id = ?1", [id]).ok();

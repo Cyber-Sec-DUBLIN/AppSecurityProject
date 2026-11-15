@@ -6,6 +6,8 @@ const { title = 'SlopSecurity' } = Astro.props;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="SlopSecurity keeps your digital life simple with thoughtful protection for all your devices." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>{title}</title>
     <link rel="stylesheet" href="/style.css" />
     <script is:inline>window.API = 'http://localhost:8080';</script>
@@ -13,44 +15,45 @@ const { title = 'SlopSecurity' } = Astro.props;
   <body>
     <header class="nav">
       <a class="brand" href="/">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 2 20 5v6c0 5-3.4 8.5-8 11-4.6-2.5-8-6-8-11V5l8-3Z" fill="url(#bg)" stroke="rgba(255,255,255,.25)" stroke-width="0.8"/>
-          <path d="m8.4 12 2.4 2.4L15.7 9.4" stroke="#04120d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <defs><linearGradient id="bg" x1="4" y1="2" x2="20" y2="22"><stop stop-color="#1fe0a8"/><stop offset="1" stop-color="#5b8cff"/></linearGradient></defs>
+        <svg viewBox="0 0 40 44" fill="none" aria-hidden="true">
+          <path d="M20 2 37 8v13c0 10-7.5 17.5-17 21C10.5 38.5 3 31 3 21V8l17-6Z" fill="#c5f277"/>
+          <path d="m12 21 5.5 5.5L28 15" stroke="#152008" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
-        Slop<span class="mark">Security</span>
+        <span>Slop<span class="mark">Security</span></span>
       </a>
-      <nav>
+      <nav aria-label="Main navigation">
         <a href="/shop">Plans</a>
         <a href="/search">Search</a>
-        <a href="/cart">Cart</a>
+        <a class="cart-link" href="/cart">Cart <span id="cart-count">0</span></a>
         <a href="/account">Account</a>
         <a id="admin-link" href="/admin" style="display:none">Admin</a>
         <span id="who"></span>
-        <a id="login-link" href="/login">Login</a>
-        <a id="signup-link" class="btn ghost" href="/signup" style="padding:.4rem .9rem">Sign up</a>
-        <a href="#" id="logout" style="display:none">Logout</a>
+        <a id="login-link" href="/login">Log in</a>
+        <a id="signup-link" class="btn" href="/signup" style="padding:.45rem .85rem">Get protected</a>
+        <a href="#" id="logout" style="display:none">Log out</a>
       </nav>
     </header>
     <main><slot /></main>
     <footer class="foot">
-      <span class="dot"></span>
-      <span><strong>Fictional product.</strong> SlopSecurity is an <strong>intentionally insecure</strong>
-        training application for DFCS H4013 — localhost + synthetic data only. It is not real
-        antivirus software and protects nothing. Do not deploy.</span>
+      <div class="foot-brand">SlopSecurity<span style="color:var(--primary)">.</span></div>
+      <p><strong>Fictional antivirus. Real commitment to the bit.</strong><br />SlopSecurity protects nothing and admits almost everything. Localhost training only.<br />© 2026 SlopSecurity. Peace of mind sold separately.</p>
     </footer>
     <script is:inline>
+      function refreshCart() {
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        document.getElementById('cart-count').textContent = cart.length;
+      }
+      refreshCart();
       (async () => {
         try {
           const r = await fetch(window.API + '/api/me', { credentials: 'include' });
           if (r.ok) {
             const u = await r.json();
-            document.getElementById('who').textContent = ' ' + u.username + ' (' + u.role + ') ';
+            document.getElementById('who').textContent = u.username + ' · ' + u.role;
             document.getElementById('logout').style.display = '';
             document.getElementById('login-link').style.display = 'none';
             document.getElementById('signup-link').style.display = 'none';
-            // NOTE: the Admin link is only *hidden* for non-admins. The API does
-            // not enforce the admin role, so /admin still works for anyone.
+            // VULN-05: hiding a link is not access control. /admin works for anyone.
             if (u.role === 'admin') document.getElementById('admin-link').style.display = '';
           }
         } catch (e) {}
