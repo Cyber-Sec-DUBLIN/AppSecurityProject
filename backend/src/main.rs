@@ -99,10 +99,10 @@ fn init_db(conn: &Connection) {
                 ('staff','staff123','staff','2 Stockroom Ave, Dublin'),
                 ('alice','password123','customer','3 Customer Rd, Cork');
              INSERT INTO products (name,description,price) VALUES
-                ('Rubber Duck','A debugging companion.',4.99),
-                ('Mechanical Keyboard','Clicky and loud.',89.00),
-                ('USB Cable','<b>Braided</b> and durable.',7.50),
-                ('Sticker Pack','Laptop stickers for hackers.',3.25);",
+                ('SlopSecurity Free','Basic protection for the hopeful. Real-time scanning that usually runs.',0.00),
+                ('SlopSecurity Plus','<b>Ransomware</b> shield, a firewall, and a weekly reassuring email.',19.99),
+                ('SlopSecurity Pro','Everything in Plus, plus a VPN and support that is mostly an AI named Dave.',49.99),
+                ('SlopSecurity Ultimate','Identity monitoring, a password vault, and a very large green checkmark.',99.99);",
         )
         .unwrap();
     }

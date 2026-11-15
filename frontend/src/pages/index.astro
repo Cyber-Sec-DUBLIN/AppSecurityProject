@@ -1,24 +1,72 @@
 ---
 import Layout from '../layouts/Layout.astro';
 ---
-<Layout title="SlopShop — Home">
-  <h1>Welcome to SlopShop</h1>
-  <p class="muted">The finest synthetic goods, served with zero security hardening.</p>
-  <h2>Featured products</h2>
-  <div id="featured" class="grid"></div>
+<Layout title="SlopSecurity — Antivirus, allegedly">
+  <section class="hero">
+    <div>
+      <span class="eyebrow">🛡 SlopSecurity 2026</span>
+      <h1>Antivirus that's <span>doing its best</span>.</h1>
+      <p>Real-time protection against malware, ransomware and phishing — from a
+        security suite that has never once been independently audited. Sleep
+        soundly behind a reassuringly large green checkmark.</p>
+      <div class="cta-row">
+        <a class="btn" href="/shop">Browse plans</a>
+        <a class="btn ghost" href="#features">See features</a>
+      </div>
+    </div>
+    <div class="hero-art">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2 20 5v6c0 5-3.4 8.5-8 11-4.6-2.5-8-6-8-11V5l8-3Z" fill="url(#hg)" stroke="rgba(255,255,255,.2)"/>
+        <path d="m8.2 12 2.6 2.6L16 9.2" stroke="#04120d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <defs><linearGradient id="hg" x1="4" y1="2" x2="20" y2="22"><stop stop-color="#1fe0a8"/><stop offset="1" stop-color="#5b8cff"/></linearGradient></defs>
+      </svg>
+    </div>
+  </section>
+
+  <section id="features" class="section">
+    <h2 class="center">Protection, broadly defined</h2>
+    <div class="features">
+      <div class="feature">
+        <div class="ico"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M12 3 4 6v5c0 5 3.5 8 8 10 4.5-2 8-5 8-10V6l-8-3Z" stroke-linejoin="round"/></svg></div>
+        <h3>Real-time Shield</h3>
+        <p>Scans files as they open, whenever it remembers to.</p>
+      </div>
+      <div class="feature">
+        <div class="ico"><svg viewBox="0 0 24 24" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke-linecap="round"/></svg></div>
+        <h3>Ransomware Guard</h3>
+        <p>Negotiates with ransomware on your behalf, politely.</p>
+      </div>
+      <div class="feature">
+        <div class="ico"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></div>
+        <h3>Phishing Filter</h3>
+        <p>Flags suspicious emails, and a few important real ones.</p>
+      </div>
+      <div class="feature">
+        <div class="ico"><svg viewBox="0 0 24 24" stroke-width="2"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" stroke-linejoin="round"/></svg></div>
+        <h3>Turbo Boost</h3>
+        <p>Deletes files at random to make your PC feel faster.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Featured plans</h2>
+    <div id="featured" class="grid"></div>
+  </section>
 
   <script is:inline>
     (async () => {
       const r = await fetch(window.API + '/api/products', { credentials: 'include' });
       const products = await r.json();
       const el = document.getElementById('featured');
-      el.innerHTML = products.slice(0, 4).map((p) => `
+      el.innerHTML = products.slice(0, 3).map((p) => `
         <div class="card">
           <h3>${p.name}</h3>
+          <div class="price">€${p.price.toFixed(2)} <small>/yr</small></div>
           <!-- VULN-07 Stored XSS: description rendered as raw HTML -->
           <div>${p.description}</div>
-          <p class="price">€${p.price.toFixed(2)}</p>
-          <a href="/product?id=${p.id}">Details</a>
+          <div class="spacer"></div>
+          <a class="btn btn-full" href="/product?id=${p.id}">View plan</a>
         </div>`).join('');
     })();
   </script>

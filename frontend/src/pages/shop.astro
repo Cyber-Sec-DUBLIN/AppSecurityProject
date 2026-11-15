@@ -1,9 +1,10 @@
 ---
 import Layout from '../layouts/Layout.astro';
 ---
-<Layout title="SlopShop — Shop">
-  <h1>Shop</h1>
-  <div id="products" class="grid"></div>
+<Layout title="SlopSecurity — Plans">
+  <h1>Choose your plan</h1>
+  <p class="muted">All plans include our signature peace of mind and a desktop icon.</p>
+  <div id="products" class="grid" style="margin-top:1.5rem"></div>
 
   <script is:inline>
     function addToCart(id, name, price) {
@@ -18,12 +19,14 @@ import Layout from '../layouts/Layout.astro';
       const products = await r.json();
       const el = document.getElementById('products');
       // VULN-07 Stored XSS: product name + description injected as raw HTML.
-      el.innerHTML = products.map((p) => `
+      el.innerHTML = products.map((p, i) => `
         <div class="card">
+          ${i === 2 ? '<span class="badge">Most popular</span>' : ''}
           <h3>${p.name}</h3>
+          <div class="price">€${p.price.toFixed(2)} <small>/yr</small></div>
           <div>${p.description}</div>
-          <p class="price">€${p.price.toFixed(2)}</p>
-          <button onclick='addToCart(${p.id}, ${JSON.stringify(p.name)}, ${p.price})'>Add to cart</button>
+          <div class="spacer"></div>
+          <button class="btn-full" onclick='addToCart(${p.id}, ${JSON.stringify(p.name)}, ${p.price})'>Add to cart</button>
         </div>`).join('');
     })();
   </script>

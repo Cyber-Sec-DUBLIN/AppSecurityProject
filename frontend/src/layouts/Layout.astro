@@ -1,5 +1,5 @@
 ---
-const { title = 'SlopShop' } = Astro.props;
+const { title = 'SlopSecurity' } = Astro.props;
 ---
 <!doctype html>
 <html lang="en">
@@ -12,23 +12,32 @@ const { title = 'SlopShop' } = Astro.props;
   </head>
   <body>
     <header class="nav">
-      <a class="brand" href="/">🛒 SlopShop</a>
+      <a class="brand" href="/">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2 20 5v6c0 5-3.4 8.5-8 11-4.6-2.5-8-6-8-11V5l8-3Z" fill="url(#bg)" stroke="rgba(255,255,255,.25)" stroke-width="0.8"/>
+          <path d="m8.4 12 2.4 2.4L15.7 9.4" stroke="#04120d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <defs><linearGradient id="bg" x1="4" y1="2" x2="20" y2="22"><stop stop-color="#1fe0a8"/><stop offset="1" stop-color="#5b8cff"/></linearGradient></defs>
+        </svg>
+        Slop<span class="mark">Security</span>
+      </a>
       <nav>
-        <a href="/shop">Shop</a>
+        <a href="/shop">Plans</a>
         <a href="/search">Search</a>
         <a href="/cart">Cart</a>
         <a href="/account">Account</a>
         <a id="admin-link" href="/admin" style="display:none">Admin</a>
         <span id="who"></span>
         <a id="login-link" href="/login">Login</a>
-        <a id="signup-link" href="/signup">Sign up</a>
+        <a id="signup-link" class="btn ghost" href="/signup" style="padding:.4rem .9rem">Sign up</a>
         <a href="#" id="logout" style="display:none">Logout</a>
       </nav>
     </header>
     <main><slot /></main>
     <footer class="foot">
-      v0 baseline — <strong>intentionally insecure</strong> training application for DFCS H4013.
-      Localhost + synthetic data only. Do not deploy.
+      <span class="dot"></span>
+      <span><strong>Fictional product.</strong> SlopSecurity is an <strong>intentionally insecure</strong>
+        training application for DFCS H4013 — localhost + synthetic data only. It is not real
+        antivirus software and protects nothing. Do not deploy.</span>
     </footer>
     <script is:inline>
       (async () => {

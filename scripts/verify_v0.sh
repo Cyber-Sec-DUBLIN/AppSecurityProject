@@ -68,7 +68,7 @@ hr
 # VULN-07 / VULN-08  XSS sink precondition (payload stored & returned unescaped)
 echo "VULN-07  Stored-XSS sink (API returns raw HTML)"
 r=$(curl -s "$B/api/products")
-echo "$r" | grep -q '<b>Braided</b>' && ok "product HTML returned unescaped (renders via innerHTML)" || no "output appears encoded"
+echo "$r" | grep -q '<b>' && ok "product HTML returned unescaped (renders via innerHTML)" || no "output appears encoded"
 echo "         (full JS execution confirmed in browser: document.title => XSS_FIRED / RXSS_FIRED)"
 hr
 
